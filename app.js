@@ -7,7 +7,6 @@ const userModel = require("./models/books"); // Adjust path if needed
 
 const session = require("express-session");
 
-
 require("dotenv").config(); // This helps to have access to the enviroment variables through the mongoose database
 
 const db = require("./db");
@@ -20,7 +19,7 @@ const app = express();
 db.connectToMongoDB();
 
 require("./auth/google"); // This is the Google OAuth Strategy Middleware.
-require("./auth/github");  // This is the Github OAuth Strategy Middleware
+require("./auth/github"); // This is the Github OAuth Strategy Middleware
 
 app.use(
   session({
@@ -38,9 +37,6 @@ app.use(passport.session()); // use passport session middleware.
 
 // This below is to Serialize and deserilise the user object to and from the session
 
-// passport.serializeUser(userModel.serializeUser()); // This is like getting back the object.
-// passport.deserializeUser(userModel.deserializeUser());
-
 passport.serializeUser((user, done) => {
   done(null, user);
 });
@@ -55,11 +51,13 @@ const booksRoute = require("./routes/books");
 
 app.use("/books", connectionEnsureLogin.ensureLoggedIn(), booksRoute); //  connectionEnsureLogin.ensureLoggedIn(), This helps user to access the books when logged in. as middleware
 
+// Googgle Login Start Route
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["email", "profile"] })
 );
 
+// Google Call back  Auth route Response
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", {
@@ -68,29 +66,39 @@ app.get(
   })
 );
 
-// app.get("/success", (req, res) => {
-//   if (!req.user) {
-//     return res.redirect("/"); // Redirect if user not found
-//   }
-//   res.send(`Welcome ${req.user.displayName}, your email is ${req.user.email}`);
-// });
+//  Github Login Start Route
 
-app.get('/success', (req, res) => {
-  if (!req.user) {
-      return res.redirect('/'); // Redirect if user not found
+app.get(
+  "/auth/github",
+  passport.authenticate("github", { scope: ["user:email"] })
+);
+
+// Github Call back  Auth route Response
+
+app.get(
+  "/auth/github/callback",
+  passport.authenticate("github", { failureRedirect: "/failed" }),
+  (req, res) => {
+    res.redirect("/success");
   }
+);
 
+// Succces Route
+app.get("/success", (req, res) => {
+  if (!req.user) {
+    return res.redirect("/"); // Redirect to home page if user not found
+  }
+  // Output message to the browser on success.
   res.send(`
       <h1>Welcome, ${req.user.displayName || req.user.username}!</h1>
       <p>Your email: ${req.user.email || "Email not available"}</p>
-      <img src="${req.user.photos ? req.user.photos[0].value : ''}" alt="Profile Picture">
+      <img src="${
+        req.user.photos ? req.user.photos[0].value : ""
+      }" alt="Profile Picture">
       <br><br>
       <a href="/logout">Logout</a>
   `);
 });
-
-
-
 
 app.get("/failed", (req, res) => {
   res.send("Failed to Authenticate");
@@ -120,24 +128,6 @@ app.get(
     res.redirect("/success");
   }
 );
-
-// The Github route
-
-app.get(
-  "/auth/github",
-  passport.authenticate("github", { scope: ["user:email"] })
-  
-);
-
-// Callback URL that GitHub redirects to after authentication
-app.get("auth/github/callback",
-  passport.authenticate("github", {failureRedirect: "/failed",}),
-  (req, res) => {
-    res.redirect("/success"); // Redirect to success page if login is successful
-  }
-);
-
-
 
 // This renders the Logout page
 
